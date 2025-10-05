@@ -1,70 +1,17 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from "react-native";
+import { useNavigationContainerRef, useRouter } from 'expo-router';
+import { useEffect } from 'react';
 
-export default function HomeScreen() {
-  const handlePress = (menu: string) => {
-    Alert.alert(`Você clicou em: ${menu}`);
-  };
+export default function IndexRedirect() {
+  const router = useRouter();
+  const navReady = useNavigationContainerRef();
 
-  return (
-    <View style={styles.container}>
-      {/* Logo */}
-      <Image
-        source={require("../assets/fujihub-main.png")} // coloque a logo em /assets
-        style={styles.logo}
-        resizeMode="contain"
-      />
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      router.replace({ pathname: '/login' } as any);
+    }, 0); // aguarda 1 tick para garantir montagem
 
-      {/* Título */}
-      <Text style={styles.title}>Bem-vindo ao FujiHub</Text>
+    return () => clearTimeout(timeout);
+  }, [router]);
 
-      {/* Menus */}
-      <View style={styles.menuContainer}>
-        {["Produtos", "Serviços", "Contato", "Sobre nós"].map((menu) => (
-          <TouchableOpacity
-            key={menu}
-            style={styles.menuButton}
-            onPress={() => handlePress(menu)}
-          >
-            <Text style={styles.menuText}>{menu}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
+  return null;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  logo: {
-    width: 220,
-    height: 120,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 30,
-    color: "#333",
-  },
-  menuContainer: {
-    width: "100%",
-  },
-  menuButton: {
-    backgroundColor: "#e60023", // vermelho estilizado
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
-    alignItems: "center",
-  },
-  menuText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-});
