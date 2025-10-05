@@ -1,34 +1,74 @@
-import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+// app/screens/DashboardScreen.tsx
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Button,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useAuth } from '../../hooks/useAuth';
 
-export default function HomeScreen() {
-  const handlePress = (menu: string) => {
-    Alert.alert(`Você clicou em: ${menu}`);
-  };
+export default function DashboardScreen() {
+  const { authFetch, logout, loading } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  // 🔒 Função de logout estável
+  const handleLogout = useCallback(async () => {
+    await logout();
+    router.replace('/login');
+  }, [logout, router]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    (async () => {
+      try {
+        setLoadingProfile(true);
+        const res = await authFetch('/api/profile/');
+        if (res.ok) {
+          const data = await res.json();
+          setProfile(data);
+        } else {
+          setError('Não foi possível carregar o perfil');
+          handleLogout(); // usa a função estável
+        }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoadingProfile(false);
+      }
+    })();
+  }, [loading, authFetch, handleLogout]);
+
+  if (loading || loadingProfile) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#FB0020" />
+        <Text style={styles.text}>Carregando perfil...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.error}>Erro: {error}</Text>
+        <Button title="Sair" onPress={handleLogout} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {/* Logo */}
-      <Image
-        source={require("../assets/fujihub-main.png")} // coloque a logo em /assets
-        style={styles.logo}
-        resizeMode="contain"
-      />
-
-      {/* Título */}
-      <Text style={styles.title}>Bem-vindo ao FujiHub</Text>
-
-      {/* Menus */}
-      <View style={styles.menuContainer}>
-        {["Produtos", "Serviços", "Contato", "Sobre nós"].map((menu) => (
-          <TouchableOpacity
-            key={menu}
-            style={styles.menuButton}
-            onPress={() => handlePress(menu)}
-          >
-            <Text style={styles.menuText}>{menu}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <Text style={styles.welcome}>Bem-vindo, {profile?.username} 👋</Text>
+      <Text style={styles.info}>ID: {profile?.id}</Text>
+      <Text style={styles.info}>Email: {profile?.email}</Text>
+      <Button title="Logout" onPress={handleLogout} />
     </View>
   );
 }
@@ -36,35 +76,33 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
+    backgroundColor: '#0f0f0f',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
   },
-  logo: {
-    width: 220,
-    height: 120,
-    marginBottom: 20,
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0f0f0f',
   },
-  title: {
+  welcome: {
     fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 30,
-    color: "#333",
+    color: '#fff',
+    marginBottom: 12,
   },
-  menuContainer: {
-    width: "100%",
+  info: {
+    fontSize: 16,
+    color: '#ccc',
+    marginBottom: 6,
   },
-  menuButton: {
-    backgroundColor: "#e60023", // vermelho estilizado
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
-    alignItems: "center",
+  text: {
+    color: '#fff',
+    marginTop: 12,
   },
-  menuText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
+  error: {
+    color: 'red',
+    marginBottom: 12,
   },
 });

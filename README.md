@@ -1,50 +1,92 @@
-# Welcome to your Expo app 👋
+# 📱 FujiHub Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Este é o **aplicativo mobile do FujiHub**, desenvolvido com **React Native + Expo**, responsável por oferecer a experiência nativa em **iOS** e **Android**, consumindo a API do backend (Django REST Framework).
 
-## Get started
+---
 
-1. Install dependencies
+## 🚀 Tecnologias
 
-   ```bash
-   npm install
-   ```
+- [React Native](https://reactnative.dev/)
+- [Expo](https://expo.dev/) para build e dev server
+- [React Navigation](https://reactnavigation.org/) para navegação
+- [Axios ou Fetch API](https://axios-http.com/) para comunicação com o backend
+- [Expo SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/) para armazenamento seguro de tokens
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## ⚙️ Configuração do ambiente
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. Instale as dependências
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Inicie o app
 
-## Learn more
+```bash
+npx expo start
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+No terminal, você terá opções para abrir o app em:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- **Expo Go** (Android/iOS)
+- **Android Emulator**
+- **iOS Simulator**
+- **Development Build**
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
+## 📡 Integração com o Backend
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- O backend roda em `http://127.0.0.1:8000`
+- O mobile consome os endpoints da API, por exemplo:
+  - `POST /api/token/` → login (JWT)
+  - `GET /api/profile/` → dados do usuário autenticado
+
+⚠️ Lembre-se: para testar no celular físico, use o **IP da sua máquina** na URL da API (ex: `http://192.168.0.10:8000`) em vez de `localhost`.
+
+---
+
+## 🗂️ Estrutura de pastas
+
+```
+mobile/
+├── app/             # Rotas e telas (file-based routing do Expo Router)
+├── assets/          # Ícones, imagens, fontes
+├── components/      # Componentes reutilizáveis
+├── services/        # Comunicação com API
+├── styles/          # Estilos globais
+├── App.js
+└── README.md
+```
+
+---
+
+## 🧪 Scripts úteis
+
+- `npm run start` → inicia o servidor Expo
+- `npm run android` → abre no emulador Android
+- `npm run ios` → abre no simulador iOS
+- `npm run web` → roda versão web (experimental)
+
+---
+
+## 🎯 Roadmap
+
+- [ ] Integração completa com autenticação JWT
+- [ ] Armazenamento seguro de tokens (SecureStore)
+- [ ] Dashboard inicial conectado ao backend
+- [ ] Tema visual unificado com branding FujiHub
+- [ ] Deploy em lojas (Play Store / App Store)
+
+---
+
+## 📜 Licença
+
+Este projeto é de uso interno do **FujiHub**.
+
+```
+
+---
+```
