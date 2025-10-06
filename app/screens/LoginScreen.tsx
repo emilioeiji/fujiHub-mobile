@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Keyboard,
@@ -20,13 +21,18 @@ export default function LoginScreen() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const handleLogin = async () => {
     try {
-      await login(username, password);
-      router.replace('/dashboard');
+      setSubmitting(true);
+      await login(username, password); // salva tokens
+      router.replace('/(tabs)');       // redireciona
     } catch (err: any) {
-      Alert.alert('Erro de login', err.message);
+      const msg = err.message ?? 'Erro inesperado';
+      Alert.alert('Erro de login', msg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -64,8 +70,16 @@ export default function LoginScreen() {
             secureTextEntry
           />
 
-          <TouchableOpacity style={styles.button} onPress={handleLogin}>
-            <Text style={styles.buttonText}>Entrar</Text>
+          <TouchableOpacity
+            style={[styles.button, submitting && { opacity: 0.6 }]}
+            onPress={handleLogin}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Entrar</Text>
+            )}
           </TouchableOpacity>
         </ScrollView>
       </TouchableWithoutFeedback>

@@ -1,14 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 
 const API_URL = 'http://192.168.0.139:8000';
+const apiUrl = (path: string) => `${API_URL}${path}`;
 
 export function useAuth() {
   const [access, setAccess] = useState<string | null>(null);
   const [refresh, setRefresh] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  // Carregar tokens do storage ao iniciar
+  // Carregar tokens ao iniciar
   useEffect(() => {
     (async () => {
       const storedAccess = await AsyncStorage.getItem('access');
@@ -19,9 +22,17 @@ export function useAuth() {
     })();
   }, []);
 
+  // Logout
+  const logout = useCallback(async () => {
+    await AsyncStorage.multiRemove(['access', 'refresh']);
+    setAccess(null);
+    setRefresh(null);
+    router.replace('/login'); // força redirecionamento
+  }, [router]);
+
   // Login
   const login = useCallback(async (username: string, password: string) => {
-    const res = await fetch(`${API_URL}/api/token/`, {
+    const res = await fetch(apiUrl('/api/token/'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
@@ -29,64 +40,102 @@ export function useAuth() {
 
     if (!res.ok) throw new Error('Credenciais inválidas');
     const data = await res.json();
+    console.log('LOGIN DATA:', data);
 
-    await AsyncStorage.setItem('access', data.access);
-    await AsyncStorage.setItem('refresh', data.refresh);
+    // Aceita múltiplos formatos
+    const accessToken = data.access ?? data.token;
+    const refreshToken = data.refresh ?? data.refresh_token;
 
-    setAccess(data.access);
-    setRefresh(data.refresh);
+    if (!accessToken || !refreshToken) {
+      throw new Error('Resposta inválida do servidor');
+    }
+
+    await AsyncStorage.setItem('access', accessToken);
+    await AsyncStorage.setItem('refresh', refreshToken);
+
+    setAccess(accessToken);
+    setRefresh(refreshToken);
+    return accessToken;
   }, []);
 
-  // Refresh do access token
+  // Refresh
   const refreshAccess = useCallback(async () => {
     if (!refresh) return null;
-    const res = await fetch(`${API_URL}/api/token/refresh/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh }),
-    });
+    try {
+      const res = await fetch(apiUrl('/api/token/refresh/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh }),
+      });
 
-    if (res.ok) {
-      const data = await res.json();
-      await AsyncStorage.setItem('access', data.access);
-      setAccess(data.access);
-      return data.access;
-    } else {
-      logout();
+      console.log('REFRESH STATUS:', res.status);
+
+      if (res.ok) {
+        const data = await res.json();
+        console.log('REFRESH DATA:', data);
+
+        const newAccess = data.access ?? data.token;
+        if (!newAccess) {
+          await logout();
+          return null;
+        }
+
+        await AsyncStorage.setItem('access', newAccess);
+        setAccess(newAccess);
+        return newAccess;
+      } else {
+        await logout();
+        return null;
+      }
+    } catch (err) {
+      console.error('REFRESH ERROR:', err);
+      await logout();
       return null;
     }
-  }, [refresh]);
+  }, [refresh, logout]);
 
-  // Logout
-  const logout = useCallback(async () => {
-    await AsyncStorage.multiRemove(['access', 'refresh']);
-    setAccess(null);
-    setRefresh(null);
-  }, []);
-
-  // Função helper para chamadas autenticadas
+  // Fetch autenticado
   const authFetch = useCallback(
     async (url: string, options: RequestInit = {}) => {
       let token = access;
+
+      // Se ainda não carregou no estado, tenta pegar direto do AsyncStorage
       if (!token) {
-        token = await refreshAccess();
-        if (!token) throw new Error('Não autenticado');
+        token = await AsyncStorage.getItem('access');
       }
 
-      const res = await fetch(`${API_URL}${url}`, {
+      // Se mesmo assim não tiver, tenta refresh
+      if (!token) {
+        token = await refreshAccess();
+      }
+
+      console.log('AUTHFETCH TOKEN:', token);
+
+      if (!token) {
+        console.log('AUTHFETCH: sem token, forçando logout');
+        await logout();
+        throw new Error('Não autenticado');
+      }
+
+      let res = await fetch(apiUrl(url), {
         ...options,
         headers: {
           ...(options.headers || {}),
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${token}`, // 👈 talvez precise ser "Token"
           'Content-Type': 'application/json',
         },
       });
 
-      // Se o token expirou, tenta refresh e repete
+      console.log('AUTHFETCH STATUS:', res.status);
+
       if (res.status === 401) {
+        console.log('AUTHFETCH: 401, tentando refresh');
         token = await refreshAccess();
-        if (!token) throw new Error('Sessão expirada');
-        return fetch(`${API_URL}${url}`, {
+        if (!token) {
+          await logout();
+          throw new Error('Sessão expirada');
+        }
+        res = await fetch(apiUrl(url), {
           ...options,
           headers: {
             ...(options.headers || {}),
@@ -96,10 +145,10 @@ export function useAuth() {
         });
       }
 
-      return res;
+      return res.json();
     },
-    [access, refreshAccess]
+    [access, refreshAccess, logout]
   );
 
-  return { access, refresh, loading, login, logout, authFetch };
+  return { access, refresh, loading, login, logout, authFetch, refreshAccess };
 }

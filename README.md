@@ -85,8 +85,3 @@ mobile/
 ## 📜 Licença
 
 Este projeto é de uso interno do **FujiHub**.
-
-```
-
----
-```
