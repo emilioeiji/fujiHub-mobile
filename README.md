@@ -35,7 +35,7 @@ docker compose -f .devcontainer/docker-compose.yml up -d --build
 
 ## Rodando o mobile
 
-Dentro do container `mobile`:
+A partir da raiz do workspace, entre no container `mobile`:
 
 ```bash
 docker compose -f .devcontainer/docker-compose.yml exec mobile bash
