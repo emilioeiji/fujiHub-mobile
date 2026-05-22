@@ -62,9 +62,26 @@ O Expo vai mostrar as opções para abrir em:
 
 Portas usadas pelo Expo no Dev Container:
 
+- `8081` -> Metro Bundler e Expo web nas versões atuais
 - `19000`
 - `19001`
 - `19002`
+
+Para testar no navegador local:
+
+```bash
+npx expo start --web
+```
+
+O Expo deve indicar algo como `http://localhost:8081`. Se a porta não abrir depois de alterar o `.devcontainer`, recrie o container com **Dev Containers: Rebuild Container** ou rode novamente o `docker compose up -d --build`.
+
+Para testar no celular físico, prefira primeiro o modo LAN:
+
+```bash
+npx expo start --lan
+```
+
+Use `--tunnel` apenas quando LAN não funcionar, porque ele depende de conexão externa/ngrok e pode falhar em redes corporativas, VPNs ou ambientes sem acesso externo.
 
 ---
 

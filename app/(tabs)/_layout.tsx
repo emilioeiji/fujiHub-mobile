@@ -38,6 +38,8 @@ export default function TabLayout() {
             iconName = 'home-outline';
           } else if (route.name === 'employees') {
             iconName = 'people-outline';
+          } else if (route.name === 'register') {
+            iconName = 'person-add-outline';
           } else if (route.name === 'settings') {
             iconName = 'settings-outline';
           }
@@ -48,6 +50,7 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
       <Tabs.Screen name="employees" options={{ title: 'Funcionários' }} />
+      <Tabs.Screen name="register" options={{ title: 'Cadastro' }} />
       <Tabs.Screen name="settings" options={{ title: 'Configurações' }} />
     </Tabs>
   );

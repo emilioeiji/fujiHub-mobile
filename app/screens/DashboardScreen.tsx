@@ -29,14 +29,8 @@ export default function DashboardScreen() {
     (async () => {
       try {
         setLoadingProfile(true);
-        const res = await authFetch('/api/profile/');
-        if (res.ok) {
-          const data = await res.json();
-          setProfile(data);
-        } else {
-          setError('Não foi possível carregar o perfil');
-          handleLogout(); // usa a função estável
-        }
+        const data = await authFetch('/api/profile/');
+        setProfile(data);
       } catch (err: any) {
         setError(err.message);
       } finally {

@@ -2,8 +2,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = 'http://192.168.0.139:8000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.0.140:8000';
 const apiUrl = (path: string) => `${API_URL}${path}`;
+
+async function parseJsonSafe(res: Response) {
+  const text = await res.text();
+  if (!text) return null;
+  return JSON.parse(text);
+}
+
+async function parseApiError(res: Response) {
+  try {
+    const data = await parseJsonSafe(res);
+    if (typeof data.detail === 'string') return data.detail;
+    if (typeof data.error === 'string') return data.error;
+    if (data) return JSON.stringify(data);
+    return `Erro HTTP ${res.status}`;
+  } catch {
+    return `Erro HTTP ${res.status}`;
+  }
+}
 
 export function useAuth() {
   const [access, setAccess] = useState<string | null>(null);
@@ -145,7 +163,11 @@ export function useAuth() {
         });
       }
 
-      return res.json();
+      if (!res.ok) {
+        throw new Error(await parseApiError(res));
+      }
+
+      return parseJsonSafe(res);
     },
     [access, refreshAccess, logout]
   );
