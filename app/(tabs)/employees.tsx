@@ -11,9 +11,11 @@ export default function EmployeesScreen() {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const data = await authFetch('/api/employees/');
+        const data = await authFetch('/api/employees/?page_size=20');
         if (Array.isArray(data)) {
           setEmployees(data);
+        } else if (Array.isArray(data?.results)) {
+          setEmployees(data.results);
         } else {
           setError('Formato inesperado da resposta da API');
         }

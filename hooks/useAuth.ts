@@ -1,27 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { parseApiError, requestApi } from '../lib/api';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.0.140:8000';
-const apiUrl = (path: string) => `${API_URL}${path}`;
-
-async function parseJsonSafe(res: Response) {
-  const text = await res.text();
-  if (!text) return null;
-  return JSON.parse(text);
-}
-
-async function parseApiError(res: Response) {
-  try {
-    const data = await parseJsonSafe(res);
-    if (typeof data.detail === 'string') return data.detail;
-    if (typeof data.error === 'string') return data.error;
-    if (data) return JSON.stringify(data);
-    return `Erro HTTP ${res.status}`;
-  } catch {
-    return `Erro HTTP ${res.status}`;
-  }
-}
+const ACCESS_KEY = 'access';
+const REFRESH_KEY = 'refresh';
 
 export function useAuth() {
   const [access, setAccess] = useState<string | null>(null);
@@ -32,8 +15,8 @@ export function useAuth() {
   // Carregar tokens ao iniciar
   useEffect(() => {
     (async () => {
-      const storedAccess = await AsyncStorage.getItem('access');
-      const storedRefresh = await AsyncStorage.getItem('refresh');
+      const storedAccess = await AsyncStorage.getItem(ACCESS_KEY);
+      const storedRefresh = await AsyncStorage.getItem(REFRESH_KEY);
       setAccess(storedAccess);
       setRefresh(storedRefresh);
       setLoading(false);
@@ -42,25 +25,27 @@ export function useAuth() {
 
   // Logout
   const logout = useCallback(async () => {
-    await AsyncStorage.multiRemove(['access', 'refresh']);
+    await AsyncStorage.multiRemove([ACCESS_KEY, REFRESH_KEY]);
     setAccess(null);
     setRefresh(null);
-    router.replace('/login'); // força redirecionamento
+    router.replace('/login');
   }, [router]);
 
   // Login
   const login = useCallback(async (username: string, password: string) => {
-    const res = await fetch(apiUrl('/api/token/'), {
+    const { response, data } = await requestApi('/api/token/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
 
-    if (!res.ok) throw new Error('Credenciais inválidas');
-    const data = await res.json();
-    console.log('LOGIN DATA:', data);
+    if (!response.ok) {
+      throw new Error((await parseApiError(response)) || 'Credenciais inválidas');
+    }
 
-    // Aceita múltiplos formatos
+    if (!data || typeof data !== 'object') {
+      throw new Error('Resposta inválida do servidor');
+    }
     const accessToken = data.access ?? data.token;
     const refreshToken = data.refresh ?? data.refresh_token;
 
@@ -68,8 +53,8 @@ export function useAuth() {
       throw new Error('Resposta inválida do servidor');
     }
 
-    await AsyncStorage.setItem('access', accessToken);
-    await AsyncStorage.setItem('refresh', refreshToken);
+    await AsyncStorage.setItem(ACCESS_KEY, accessToken);
+    await AsyncStorage.setItem(REFRESH_KEY, refreshToken);
 
     setAccess(accessToken);
     setRefresh(refreshToken);
@@ -80,33 +65,27 @@ export function useAuth() {
   const refreshAccess = useCallback(async () => {
     if (!refresh) return null;
     try {
-      const res = await fetch(apiUrl('/api/token/refresh/'), {
+      const { response, data } = await requestApi('/api/token/refresh/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh }),
       });
 
-      console.log('REFRESH STATUS:', res.status);
-
-      if (res.ok) {
-        const data = await res.json();
-        console.log('REFRESH DATA:', data);
-
+      if (response.ok) {
         const newAccess = data.access ?? data.token;
         if (!newAccess) {
           await logout();
           return null;
         }
 
-        await AsyncStorage.setItem('access', newAccess);
+        await AsyncStorage.setItem(ACCESS_KEY, newAccess);
         setAccess(newAccess);
         return newAccess;
-      } else {
-        await logout();
-        return null;
       }
+
+      await logout();
+      return null;
     } catch (err) {
-      console.error('REFRESH ERROR:', err);
       await logout();
       return null;
     }
@@ -117,43 +96,36 @@ export function useAuth() {
     async (url: string, options: RequestInit = {}) => {
       let token = access;
 
-      // Se ainda não carregou no estado, tenta pegar direto do AsyncStorage
       if (!token) {
-        token = await AsyncStorage.getItem('access');
+        token = await AsyncStorage.getItem(ACCESS_KEY);
       }
 
-      // Se mesmo assim não tiver, tenta refresh
       if (!token) {
         token = await refreshAccess();
       }
 
-      console.log('AUTHFETCH TOKEN:', token);
-
       if (!token) {
-        console.log('AUTHFETCH: sem token, forçando logout');
         await logout();
         throw new Error('Não autenticado');
       }
 
-      let res = await fetch(apiUrl(url), {
+      let { response, data } = await requestApi(url, {
         ...options,
         headers: {
           ...(options.headers || {}),
-          Authorization: `Bearer ${token}`, // 👈 talvez precise ser "Token"
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
 
-      console.log('AUTHFETCH STATUS:', res.status);
-
-      if (res.status === 401) {
-        console.log('AUTHFETCH: 401, tentando refresh');
+      if (response.status === 401) {
         token = await refreshAccess();
         if (!token) {
           await logout();
           throw new Error('Sessão expirada');
         }
-        res = await fetch(apiUrl(url), {
+
+        const retried = await requestApi(url, {
           ...options,
           headers: {
             ...(options.headers || {}),
@@ -161,15 +133,18 @@ export function useAuth() {
             'Content-Type': 'application/json',
           },
         });
+
+        response = retried.response;
+        data = retried.data;
       }
 
-      if (!res.ok) {
-        throw new Error(await parseApiError(res));
+      if (!response.ok) {
+        throw new Error(await parseApiError(response));
       }
 
-      return parseJsonSafe(res);
+      return data;
     },
-    [access, refreshAccess, logout]
+    [access, logout, refreshAccess]
   );
 
   return { access, refresh, loading, login, logout, authFetch, refreshAccess };

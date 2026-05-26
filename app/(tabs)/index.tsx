@@ -21,14 +21,8 @@ type Employee = {
   manager_flag?: boolean;
 };
 
-type Profile = {
-  username?: string;
-  email?: string;
-};
-
 type DashboardData = {
   employees: Employee[];
-  profile: Profile | null;
 };
 
 function StatCard({
@@ -73,8 +67,8 @@ function ActionButton({
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { authFetch, loading: authLoading } = useAuth();
-  const [data, setData] = useState<DashboardData>({ employees: [], profile: null });
+  const { access, authFetch, loading: authLoading } = useAuth();
+  const [data, setData] = useState<DashboardData>({ employees: [] });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,16 +78,19 @@ export default function HomeScreen() {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
 
-      const profile = await authFetch('/api/profile/');
-      const employees = await authFetch('/api/employees/');
+      const employees = await authFetch('/api/employees/?page_size=1');
+      const employeesList = Array.isArray(employees)
+        ? employees
+        : Array.isArray(employees?.results)
+          ? employees.results
+          : [];
 
       setData({
-        profile: profile ?? null,
-        employees: Array.isArray(employees) ? employees : [],
+        employees: employeesList,
       });
       setError(null);
     } catch (err: any) {
-      setError(err.message ?? 'Nao foi possivel carregar o dashboard');
+      setError(err.message ?? 'Nao foi possivel carregar o dashboard da API');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -116,7 +113,7 @@ export default function HomeScreen() {
   );
 
   const latestEmployees = data.employees.slice(0, 4);
-  const userName = data.profile?.username || 'Usuario';
+  const userName = access ? 'Sessão ativa' : 'Sem sessão';
 
   if (authLoading || loading) {
     return (
@@ -153,13 +150,37 @@ export default function HomeScreen() {
       ) : null}
 
       <View style={styles.statsGrid}>
-        <StatCard label="Funcionarios" value={data.employees.length} icon="people-outline" tone="#111827" />
+        <StatCard label="Funcionarios (amostra)" value={data.employees.length} icon="people-outline" tone="#111827" />
         <StatCard label="Ativos no mes" value={activeEmployees} icon="checkmark-circle-outline" tone="#16a34a" />
         <StatCard label="Gestores" value={managers} icon="shield-checkmark-outline" tone="#2563eb" />
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Atalhos</Text>
+        <Text style={styles.sectionTitle}>Módulos</Text>
+        <ActionButton
+          label="Funcionários"
+          icon="people-outline"
+          onPress={() => router.push('/(tabs)/employees')}
+        />
+        <ActionButton
+          label="Uniformes"
+          icon="shirt-outline"
+          onPress={() => {}}
+        />
+        <ActionButton
+          label="Atendimento médico"
+          icon="medkit-outline"
+          onPress={() => {}}
+        />
+        <ActionButton
+          label="Calendário"
+          icon="calendar-outline"
+          onPress={() => {}}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Ações rápidas</Text>
         <ActionButton
           label="Cadastrar funcionario"
           icon="person-add-outline"

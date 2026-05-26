@@ -1,166 +1,88 @@
 # FujiHub Mobile
 
-Este é o **aplicativo mobile do FujiHub**, desenvolvido com **React Native + Expo**, responsável por oferecer a experiência nativa em **iOS** e **Android**, consumindo a API do backend (Django REST Framework).
+Base mobile do FujiHub com Expo, apontando para API de produção.
 
----
+## Requisitos
 
-## Tecnologias
+- Node.js + npm
+- Expo CLI (via `npx expo`)
+- Backend FujiHub disponível em `https://api.emilioeiji.com.br`
 
-- [React Native](https://reactnative.dev/)
-- [Expo](https://expo.dev/) para build e dev server
-- [React Navigation](https://reactnavigation.org/) para navegação
-- Fetch API para comunicação com o backend
-- Expo Router para rotas
+## Configuração de ambiente
 
----
-
-## Subindo o ambiente
-
-Este projeto faz parte de um workspace com `backend`, `web`, `mobile` e `.devcontainer`.
-
-O fluxo recomendado é:
-
-1. Abrir a pasta raiz do workspace no VS Code.
-2. Rodar **Dev Containers: Reopen in Container**.
-3. Subir o backend em um terminal.
-4. Subir o Expo em outro terminal.
-
-Também é possível subir os containers manualmente a partir da raiz:
+Use variável pública do Expo:
 
 ```bash
-docker compose -f .devcontainer/docker-compose.yml up -d --build
+EXPO_PUBLIC_API_URL=https://api.emilioeiji.com.br
 ```
 
----
-
-## Rodando o mobile
-
-A partir da raiz do workspace, entre no container `mobile`:
+Para rodar no celular via LAN (devcontainer/Docker), informe também o host do Metro:
 
 ```bash
-docker compose -f .devcontainer/docker-compose.yml exec mobile bash
-cd /workspace/mobile
-npm install
-npm run start
+REACT_NATIVE_PACKAGER_HOSTNAME=192.168.0.140 \
+EXPO_PUBLIC_API_URL=https://api.emilioeiji.com.br \
+npx expo start --host lan --clear
 ```
 
-Se já estiver dentro do Dev Container ou rodando localmente:
+Opção por arquivo `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Com conteúdo:
+
+```bash
+EXPO_PUBLIC_API_URL=https://api.emilioeiji.com.br
+```
+
+Observações:
+- `REACT_NATIVE_PACKAGER_HOSTNAME`: faz o celular encontrar o Metro/Expo na rede LAN.
+- `EXPO_PUBLIC_API_URL`: define para qual API o app faz as requisições (`https://api.emilioeiji.com.br` em produção).
+
+## Execução local
 
 ```bash
 cd /workspace/mobile
 npm install
-npm run start
+npx expo start --host lan --clear
 ```
 
-O Expo vai mostrar as opções para abrir em:
-
-- **Expo Go** (Android/iOS)
-- **Android Emulator**
-- **iOS Simulator**
-- **Development Build**
-- **Web**, usando `npm run web`
-
-Portas usadas pelo Expo no Dev Container:
-
-- `8081` -> Metro Bundler e Expo web nas versões atuais
-- `19000`
-- `19001`
-- `19002`
-
-Para testar no navegador local:
+Se quiser web para validação rápida:
 
 ```bash
-npx expo start --web
+npm run web
 ```
 
-O Expo deve indicar algo como `http://localhost:8081`. Se a porta não abrir depois de alterar o `.devcontainer`, recrie o container com **Dev Containers: Rebuild Container** ou rode novamente o `docker compose up -d --build`.
+## Fluxo mínimo implementado
 
-Para testar no celular físico, prefira primeiro o modo LAN:
+- Login com JWT (`/api/token/`)
+- Sessão persistida com `AsyncStorage` (`access` e `refresh`)
+- Refresh de token (`/api/token/refresh/`)
+- Logout
+- Tratamento de `401` com tentativa de refresh
+- Dashboard básico com teste de API em produção (`/api/employees/?page_size=1`)
+- Tela de sessão/perfil básico
+- Botões placeholder de módulos:
+  - Funcionários
+  - Uniformes
+  - Atendimento médico
+  - Calendário
 
-```bash
-npx expo start --lan
-```
+## Arquivos principais
 
-Use `--tunnel` apenas quando LAN não funcionar, porque ele depende de conexão externa/ngrok e pode falhar em redes corporativas, VPNs ou ambientes sem acesso externo.
+- `hooks/useAuth.ts`:
+  - fluxo de autenticação e `authFetch`
+- `lib/api.ts`:
+  - cliente HTTP centralizado, `baseURL`, timeout e parser de erro
+- `app/(tabs)/index.tsx`:
+  - dashboard básico
+- `app/(tabs)/settings.tsx`:
+  - sessão e logout
 
----
+## Limitações desta etapa
 
-## Integração com o backend
-
-- O backend deve estar rodando em `http://127.0.0.1:8000`.
-- O mobile consome os endpoints da API, por exemplo:
-  - `POST /api/token/` -> login (JWT)
-  - `GET /api/profile/` -> dados do usuário autenticado
-
-Para testar em celular físico com Expo Go, use o IP da sua máquina na rede em vez de `localhost`.
-
-Exemplo:
-
-```ts
-const API_URL = 'http://192.168.0.10:8000';
-```
-
-No projeto atual, essa URL fica em:
-
-```text
-mobile/hooks/useAuth.ts
-```
-
-Para descobrir o IP da máquina:
-
-```bash
-hostname -I
-```
-
-Use o primeiro IP da sua rede local, normalmente algo como `192.168.x.x`.
-
----
-
-## Scripts úteis
-
-- `npm run start` -> inicia o servidor Expo
-- `npm run android` -> abre no emulador Android
-- `npm run ios` -> abre no simulador iOS
-- `npm run web` -> roda versão web
-- `npm run lint` -> roda o lint do Expo
-
----
-
-## Estrutura de pastas
-
-```text
-mobile/
-├── app/             # Rotas e telas (file-based routing do Expo Router)
-├── assets/          # Ícones, imagens, fontes
-├── components/      # Componentes reutilizáveis
-├── constants/       # Constantes visuais e de app
-├── hooks/           # Hooks, incluindo autenticação/API
-├── scripts/
-├── app.json
-└── README.md
-```
-
----
-
-## Checklist rápido
-
-- Backend rodando em `0.0.0.0:8000`.
-- Celular e computador na mesma rede Wi-Fi.
-- `API_URL` em `mobile/hooks/useAuth.ts` apontando para o IP correto da máquina.
-- Expo iniciado com `npm run start`.
-
----
-
-## Roadmap
-
-- [ ] Integração completa com autenticação JWT
-- [ ] Armazenamento seguro de tokens (SecureStore)
-- [ ] Dashboard inicial conectado ao backend
-- [ ] Tema visual unificado com branding FujiHub
-- [ ] Deploy em lojas (Play Store / App Store)
-
----
-
-## Licença
-
-Este projeto é de uso interno do **FujiHub**.
+- Sem CRUD completo mobile dos módulos
+- Sem grid de calendário mobile
+- Sem push notifications
+- Sem build APK/AAB
